@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BimOn AI — Forma 설정 안내</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --code:#21262d; --text:#c9d1d9; --head:#f0f6fc;
+    --accent:#58a6ff; --green:#7ee787; --warn:#ff7b72; --border:#30363d;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;padding:40px 20px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{color:var(--head);font-size:1.9rem;margin-bottom:6px}
+  .sub{color:#8b949e;margin-bottom:8px}
+  .accentbar{height:4px;width:90px;background:linear-gradient(90deg,#00C2FF,#8C52FF);border-radius:4px;margin:14px 0 28px}
+  h2{color:var(--head);font-size:1.25rem;margin:34px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  p{margin-bottom:14px}
+  code{font-family:'Consolas',monospace;background:var(--code);color:#ff9c8a;padding:2px 7px;border-radius:5px;font-size:.92em}
+  .url{display:block;background:var(--code);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:14px 0;color:#7ee787;font-family:'Consolas',monospace;font-size:1.05rem;word-break:break-all}
+  ol{margin:0 0 16px 22px}
+  ol li{margin-bottom:12px}
+  .step{counter-reset:none}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:16px 0}
+  .callout{padding:14px 16px;margin:16px 0;border-left:4px solid var(--accent);background:rgba(88,166,255,.1);border-radius:0 8px 8px 0}
+  .callout.warn{border-left-color:var(--warn);background:rgba(255,123,114,.09)}
+  .callout.tip{border-left-color:var(--green);background:rgba(126,231,135,.08)}
+  .callout b{color:var(--head)}
+  table{width:100%;border-collapse:collapse;margin:16px 0}
+  th,td{border:1px solid var(--border);padding:9px 13px;text-align:left;font-size:.95rem}
+  th{background:var(--code);color:var(--head)}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);color:#8b949e;font-size:.9rem}
+  .big{font-size:1.05rem;color:var(--head);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🟣 BimOn AI — Forma 설정 안내</h1>
+  <p class="sub">Revit · Navisworks · AutoCAD는 설치만 하면 자동 연동됩니다. <b style="color:#f0f6fc">Forma만</b> 클라우드 제품이라 아래 <b style="color:#f0f6fc">1회 등록</b>이 필요합니다.</p>
+  <div class="accentbar"></div>
+
+  <div class="callout tip">
+    <b>✓ 설치는 이미 끝났습니다.</b> <code>BimOn-Forma</code> MCP가 Claude에 등록되었고, 확장 파일이 PC에 배포되었습니다.
+    이 페이지의 단계대로 <b>Forma 계정에서 확장을 한 번만 등록</b>하면 그 후로는 패널만 열면 동작합니다.
+  </div>
+
+  <h2>준비물 (2가지)</h2>
+  <table>
+    <tr><th>항목</th><th>설명</th></tr>
+    <tr><td>Autodesk Forma 계정</td><td>등록할 프로젝트가 있는 계정</td></tr>
+    <tr><td>APS 애플리케이션 1개</td><td>없으면 <a href="https://aps.autodesk.com" target="_blank">aps.autodesk.com</a> → <b>Create App</b> 으로 1개 생성</td></tr>
+  </table>
+
+  <h2>확장 URL (이 주소를 그대로 사용)</h2>
+  <p>설치된 브리지가 확장을 직접 제공합니다. 별도 서버·호스팅이 필요 없습니다.</p>
+  <span class="url">http://localhost:51737/standalone.html</span>
+  <div class="callout warn">
+    <b>⚠️ 반드시 <code>http://localhost</code></b> 로 입력하세요. Forma는 임베디드 뷰 URL로 <b>https</b> 또는 <b>http://localhost</b>만 허용합니다.
+    <code>http://127.0.0.1</code> 이나 공개 https 주소는 거부됩니다.
+  </div>
+
+  <h2>등록 단계 (1회만)</h2>
+  <div class="card">
+    <ol>
+      <li>Forma에서 프로젝트 열기 → 좌측 <b>확장 기능(Extensions)</b> 아이콘 → <b>+ 확장 기능 추가</b></li>
+      <li>App Store 우상단 <b>⚙ (톱니) → 확장 기능 생성(Create Extension)</b></li>
+      <li>이름 입력(예: <code>BimOn AI</code>) → 약관 동의 → <b>Create</b></li>
+      <li class="big">★ Owner를 "Myself only" → <b>본인 APS 애플리케이션</b>으로 변경
+        <div style="font-size:.9rem;color:#8b949e;font-weight:400;margin-top:4px">이래야 URL 입력 칸이 열립니다. (되돌릴 수 없음)</div>
+      </li>
+      <li><b>Integration → Embedded views</b> 에서:
+        <table>
+          <tr><th>placement</th><td><code>RIGHT_MENU_ANALYSIS_PANEL</code></td></tr>
+          <tr><th>URL</th><td><code>http://localhost:51737/standalone.html</code></td></tr>
+        </table>
+      </li>
+      <li><b>Who are allowed to use → Only specific projects</b> → 사용할 <b>프로젝트 ID</b>(<code>pro_xxxxx</code>) 추가 → <b>Save</b></li>
+      <li>프로젝트 App Store에서 <b>BimOn AI</b> 검색 → <b>Add</b> → 약관 Agree</li>
+      <li>우측 <b>분석 패널의 확장 런처(큐브 아이콘)</b> → <b>BimOn AI</b> 클릭</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <b>✓ 연결 성공 신호</b> — 패널에 <b style="color:#7ee787">🟢 Connected — ws://127.0.0.1:51737</b> + <b>SDK loaded ✓</b> 가 뜨면 완료입니다.
+    이제 Claude에서 <code>BimOn-Forma</code> 도구가 동작합니다.
+  </div>
+
+  <h2>사용 중 유지 조건</h2>
+  <ul style="margin:0 0 16px 22px">
+    <li>이 <b>패널이 열려 있어야</b> Claude가 Forma를 제어합니다 (백그라운드 불가).</li>
+    <li>브리지는 소켓이 1개라 <b>패널은 한 곳에서만</b> 열어주세요.</li>
+    <li>쓰기(WRITE) 작업은 Forma <b>편집 권한</b>이 있어야 동작합니다.</li>
+  </ul>
+
+  <h2>문제 해결</h2>
+  <table>
+    <tr><th>증상</th><th>조치</th></tr>
+    <tr><td>패널이 비어 있음 / <code>Missing ... origin</code></td><td>URL을 직접 연 것. 반드시 <b>Forma 확장으로 등록</b>해서 열어야 함</td></tr>
+    <tr><td>URL 입력란이 안 보임</td><td>Owner가 "Myself only". <b>APS 앱으로 변경</b>(4단계)</td></tr>
+    <tr><td>Claude에서 <code>not connected</code></td><td>패널 미연결. 패널을 열고 🟢 Connected 확인</td></tr>
+    <tr><td>두 곳에서 열어 도구가 엉킴</td><td>패널은 <b>한 곳만</b> 열기 (소켓 1개)</td></tr>
+  </table>
+
+  <div class="callout">
+    <b>💡 더 자세한 안내</b> — 상세 절차/스크린샷은
+    <a href="https://github.com/General-Soju/BimOnFormaExtension/blob/main/FORMA_SETUP.md" target="_blank">BimOnFormaExtension · FORMA_SETUP.md</a>
+    를 참고하세요.
+  </div>
+
+  <div class="footer">
+    BimOn AI MCP Suite · 제작자 <b>JungGeun Park (소주장군)</b><br>
+    YouTube <a href="https://www.youtube.com/@GeneralSoju" target="_blank">@GeneralSoju</a> ·
+    Email sojunbeer119@gmail.com ·
+    <a href="https://github.com/General-Soju/BimOnMcpSuite" target="_blank">GitHub</a> · MIT License
+  </div>
+
+</div>
+</body>
+</html>
