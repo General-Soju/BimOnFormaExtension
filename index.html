@@ -22,6 +22,10 @@
         font-size: 11px; white-space: pre-wrap; line-height: 1.5;
       }
       .muted { color: #8a8d92; }
+      .author { margin-top: 12px; padding-top: 10px; border-top: 1px solid #303236; font-size: 11px; line-height: 1.7; }
+      .author .who { color: #b18cff; font-weight: 600; }
+      .author a { color: #7aa2ff; text-decoration: none; }
+      .author a:hover { text-decoration: underline; }
     </style>
   </head>
   <body>
@@ -32,6 +36,11 @@
     </div>
     <div id="log"></div>
     <p class="muted">이 패널이 열려 있어야 Claude가 Forma를 제어할 수 있습니다.</p>
+    <div class="author">
+      <div><span class="who">JungGeun Park</span> · 소주장군</div>
+      <div>YouTube: <a href="https://www.youtube.com/@GeneralSoju" target="_blank" rel="noopener">youtube.com/@GeneralSoju</a></div>
+      <div class="muted">sojunbeer119@gmail.com</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
