@@ -1,6 +1,6 @@
-# BimOn AI for Forma — 1회 등록 가이드
+# BimOn AI for Autodesk Forma — Site Design : 1회 등록 가이드
 
-Forma는 데스크톱 앱이 아니라 **브라우저 확장**으로 연동됩니다. 그래서 인스톨러가 자동으로 못 하고,
+여기서 Forma는 **Autodesk Forma — Site Design**(개념설계/대지계획)을 의미합니다(다른 Autodesk 제품 아님). 데스크톱 앱이 아니라 **브라우저 확장**으로 연동됩니다. 그래서 인스톨러가 자동으로 못 하고,
 **당신의 Forma 계정에서 한 번만 등록**하면 됩니다. (이후엔 패널만 열면 작동)
 
 > 전제: ① BimOn MCP Suite 설치 완료(`BimOn-Forma`가 Claude에 등록됨) · ② Forma에 **APS 애플리케이션 1개** 보유
