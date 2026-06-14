@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BimOn AI (standalone)</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; padding: 12px; font-family: "Segoe UI", system-ui, sans-serif; background: #1e1f22; color: #e6e6e6; font-size: 13px; }
+      h1 { font-size: 14px; margin: 0 0 8px; color: #b18cff; }
+      .status { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: #777; }
+      .dot.on { background: #3ad07a; } .dot.off { background: #e05a5a; }
+      #log { height: 240px; overflow: auto; background: #141517; border: 1px solid #303236; border-radius: 6px; padding: 8px; font-family: "Fira Code", Consolas, monospace; font-size: 11px; white-space: pre-wrap; line-height: 1.5; }
+      .muted { color: #8a8d92; }
+    </style>
+  </head>
+  <body>
+    <h1>BimOn AI — Forma MCP (standalone / no-build)</h1>
+    <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting…</span></div>
+    <div id="log"></div>
+    <p class="muted">이 패널이 열려 있어야 Claude가 Forma를 제어합니다. SDK: esm.sh CDN.</p>
+
+    <script type="module">
+      // ── UI (import보다 먼저 정의·로깅하여 import 실패해도 진단 가능) ──
+      const dot = document.getElementById("dot");
+      const statusText = document.getElementById("statusText");
+      const logEl = document.getElementById("log");
+      const log = (m) => { logEl.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; logEl.scrollTop = logEl.scrollHeight; };
+      const setStatus = (on, t) => { dot.className = "dot " + (on ? "on" : "off"); statusText.textContent = t; };
+      log("boot: script started");
+      window.addEventListener("error", (e) => log("window error: " + (e.message || e.error)));
+
+      // ── SDK는 동적 import (실패해도 WS 연결/로깅은 계속) ──
+      let Forma = null;
+      (async () => {
+        try {
+          log("importing SDK from esm.sh…");
+          const mod = await import("https://esm.sh/forma-embedded-view-sdk@0.93.0/auto");
+          Forma = mod.Forma;
+          log("SDK loaded ✓ (forma-embedded-view-sdk@0.93.0)");
+        } catch (e) {
+          log("SDK import FAILED: " + (e?.message || e));
+          log("→ 이 페이지는 반드시 Forma 안(또는 외부망 가능한 브라우저)에서 열어야 합니다.");
+        }
+      })();
+
+      // ── interop helpers ──
+      const base64ToArrayBuffer = (b64) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u.buffer; };
+      const parseTransform = (j) => { if (!j) return undefined; const t = JSON.parse(j); if (!Array.isArray(t)||t.length!==16) throw new Error("transform must be 16 numbers"); return t.map(Number); };
+      const meshToInlineGeometry = (j) => { const m = JSON.parse(j); if (!Array.isArray(m.verts)||!Array.isArray(m.faces)) throw new Error("meshJson must be {verts,faces} in meters"); return { type:"Inline", format:"Mesh", verts:m.verts, faces:m.faces }; };
+
+      const overlays = new Map();
+      const requireEdit = async () => { if (!(await Forma.getCanEdit())) throw new Error("no edit access (getCanEdit==false)"); };
+
+      // ── 31 handlers (dispatch.ts와 동일) ──
+      const handlers = {
+        get_project_info: async () => ({ project: await Forma.project.get(), geoLocation: await Forma.project.getGeoLocation(), timezone: await Forma.project.getTimezone(), countryCode: await Forma.project.getCountryCode() }),
+        get_proposal_tree: async () => ({ rootUrn: await Forma.proposal.getRootUrn(), elements: await Forma.proposal.getAll() }),
+        get_element: async (a) => { if (a.urn) return await Forma.elements.get({ urn:a.urn, recursive:a.recursive==="true" }); if (a.path) return await Forma.elements.getByPath({ path:a.path, recursive:a.recursive==="true" }); throw new Error("get_element requires urn or path"); },
+        get_element_transform: async (a) => await Forma.elements.getWorldTransform({ path:a.path }),
+        get_geometry: async (a) => { switch(a.kind){ case "triangles": return Array.from(await Forma.geometry.getTriangles(a.path?{path:a.path}:undefined)); case "footprint": return await Forma.geometry.getFootprint({path:a.path}); case "category": return await Forma.geometry.getPathsByCategory({category:a.category}); default: throw new Error("kind must be triangles|footprint|category"); } },
+        get_building_functions: async () => await Forma.settings.get(),
+        get_selection: async () => await Forma.selection.getSelection(),
+        check_can_edit: async () => ({ canEdit: await Forma.getCanEdit() }),
+
+        get_sun: async () => ({ date: (await Forma.sun.getDate()).toISOString() }),
+        set_sun: async (a) => { await Forma.sun.setDate({ date: new Date(a.date) }); return "ok"; },
+        get_camera: async () => await Forma.camera.getCurrent(),
+        move_camera: async (a) => { await Forma.camera.move(JSON.parse(a.cameraStateJson)); return "ok"; },
+        switch_perspective: async () => { await Forma.camera.switchPerspective(); return "ok"; },
+        capture_view: async (a) => { const width=a.width?Number(a.width):1200, height=a.height?Number(a.height):800; const c=await Forma.camera.capture({width,height}); return { pngDataUrl:c.toDataURL("image/png"), width, height }; },
+        set_visibility: async (a) => { if (a.all==="true"){ await Forma.render.unhideAllElements(); return "ok"; } const ps=JSON.parse(a.pathsJson); const v=a.visible==="true"; await Forma.render.setElementsVisibility({ paths: ps.map(path=>({path,visible:v})) }); return "ok"; },
+
+        list_analyses: async () => await Forma.analysis.list({}),
+        run_sun_analysis: async (a) => { const p=a.parametersJson?JSON.parse(a.parametersJson):undefined; const tr=await Forma.analysis.triggerSun(p); return await Forma.analysis.getSunAnalysis(tr); },
+        run_noise_analysis: async (a) => { const p=a.parametersJson?JSON.parse(a.parametersJson):undefined; const tr=await Forma.analysis.triggerNoise(p); return await Forma.analysis.getNoiseAnalysis(tr); },
+        get_area_metrics: async (a) => await Forma.areaMetrics.calculate(a.pathsJson?{paths:JSON.parse(a.pathsJson)}:{}),
+
+        add_overlay_geojson: async (a) => { const transform=parseTransform(a.transformJson); const {id}=await Forma.render.geojson.add({ geojson:JSON.parse(a.geojson), transform }); overlays.set(id,"geojson"); return {id}; },
+        add_overlay_glb: async (a) => { const transform=parseTransform(a.transformJson); const {id}=await Forma.render.glb.add({ glb:base64ToArrayBuffer(a.glbBase64), transform }); overlays.set(id,"glb"); return {id}; },
+        remove_overlay: async (a) => { const k=overlays.get(a.id); if (k==="glb") await Forma.render.glb.remove({id:a.id}); else await Forma.render.remove({id:a.id}); overlays.delete(a.id); return "ok"; },
+        clear_overlays: async () => { await Forma.render.cleanup(); try{ await Forma.render.glb.cleanup(); }catch{} overlays.clear(); return "ok"; },
+
+        add_element: async (a) => { await requireEdit(); return await Forma.proposal.addElement({ urn:a.urn, parentPath:a.parentPath||"root", name:a.name, transform:parseTransform(a.transformJson) }); },
+        replace_element: async (a) => { await requireEdit(); await Forma.proposal.replaceElement({ path:a.path, urn:a.urn }); return "ok"; },
+        remove_element: async (a) => { await requireEdit(); await Forma.proposal.removeElement({ path:a.path }); return "ok"; },
+        edit_element_properties: async (a) => { await requireEdit(); return await Forma.elements.editProperties({ urn:a.urn, propertiesJsonMergePatch:JSON.parse(a.propertiesJson) }); },
+
+        get_drawn_input: async (a) => { switch(a.kind){ case "point": return await Forma.designTool.getPoint(); case "polygon": return await Forma.designTool.getPolygon(); case "extrudedPolygon": return await Forma.designTool.getExtrudedPolygon(); case "line": return await Forma.designTool.getLine(); default: throw new Error("kind must be point|polygon|extrudedPolygon|line"); } },
+
+        add_element_mesh: async (a) => { await requireEdit(); const geometry=meshToInlineGeometry(a.meshJson); const {urn}=await Forma.integrateElements.createElementHierarchy({ data:{ rootElement:"root", elements:{ root:{ id:"root", properties:{ name:a.name||"From Revit", geometry } } } } }); return await Forma.proposal.addElement({ urn, transform:parseTransform(a.transformJson) }); },
+        add_element_from_file: async (a) => { await requireEdit(); if (a.format==="mesh"){ const text=new TextDecoder().decode(base64ToArrayBuffer(a._dataBase64)); return await handlers.add_element_mesh({ meshJson:text, transformJson:a.transformJson, name:a.name }); } const glb=base64ToArrayBuffer(a._dataBase64); const {blobId}=await Forma.integrateElements.uploadFile({ data:glb }); const {urn}=await Forma.integrateElements.createElementV2({ properties:{ name:a.name||"From Revit" }, representations:{ volumeMesh:{ blobId } } }); return await Forma.proposal.addElement({ urn, transform:parseTransform(a.transformJson) }); },
+        export_scene_mesh: async (a) => { const req={}; if (a.path) req.path=a.path; if (a.excludedPathsJson) req.excludedPaths=JSON.parse(a.excludedPathsJson); const tris=await Forma.geometry.getTriangles(Object.keys(req).length?req:undefined); const verts=Array.from(tris); const faces=Array.from({length:verts.length/3},(_,i)=>i); return { verts, faces, unit:"meter", upAxis:"Z" }; },
+      };
+
+      // ── WS 메인 루프 (포트 스캔 + hello + 디스패치 + 재연결) ──
+      const BASE_PORT = 51737, PORT_RANGE = 10;
+      let ws = null;
+
+      function connect() {
+        let port = BASE_PORT;
+        const tryPort = () => {
+          if (port >= BASE_PORT + PORT_RANGE) { setStatus(false, "Bridge not found — is Claude (BimOn-Forma) running?"); setTimeout(()=>{ port=BASE_PORT; tryPort(); }, 3000); return; }
+          const sock = new WebSocket(`ws://127.0.0.1:${port}/`);
+          let acked = false;
+          const failNext = () => { try{sock.close();}catch{} port++; tryPort(); };
+          const timer = setTimeout(()=>{ if(!acked) failNext(); }, 700);
+          sock.onopen = () => sock.send(JSON.stringify({ type:"bimon-hello" }));
+          sock.onmessage = (ev) => {
+            let m; try { m = JSON.parse(ev.data); } catch { return; }
+            if (m.type === "bimon-ack") { acked=true; clearTimeout(timer); ws=sock; setStatus(true, `Connected — ws://127.0.0.1:${port}`); log(`connected to bridge on port ${port}`); return; }
+            handleCall(sock, m);
+          };
+          sock.onclose = () => { if (!acked){ clearTimeout(timer); failNext(); return; } ws=null; setStatus(false,"Disconnected — retrying…"); log("disconnected; retrying"); setTimeout(connect,1500); };
+          sock.onerror = () => {};
+        };
+        tryPort();
+      }
+
+      async function handleCall(sock, m) {
+        const { id, name } = m; const args = m.arguments ?? {};
+        const fn = handlers[name];
+        if (!fn) { sock.send(JSON.stringify({ id, error:`unknown tool: ${name}` })); return; }
+        if (!Forma) { sock.send(JSON.stringify({ id, error:"Forma SDK not loaded — open this page inside Forma" })); return; }
+        log(`→ ${name}`);
+        try { const out = await fn(args); sock.send(JSON.stringify({ id, result: typeof out==="string"?out:JSON.stringify(out) })); log(`← ${name} ok`); }
+        catch (err) { const msg = err?.message ?? String(err); sock.send(JSON.stringify({ id, error: msg })); log(`✕ ${name}: ${msg}`); }
+      }
+
+      setStatus(false, "Connecting…");
+      log("SDK loaded from esm.sh; scanning bridge ports 51737–51746…");
+      connect();
+    </script>
+  </body>
+</html>

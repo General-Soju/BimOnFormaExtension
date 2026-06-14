@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+# 확장을 GitHub Pages의 고정 HTTPS URL로 배포한다.
+# 빌드된 앱(dist/index.html)과 빌드불필요 단일파일(standalone.html)을 둘 다 게시.
+#   https://<user>.github.io/<repo>/                → 빌드된 Vite 앱
+#   https://<user>.github.io/<repo>/standalone.html → 빌드불필요 단일 HTML
+# 둘 중 어느 URL이든 Forma 확장 URL로 등록 가능.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # 빌드불필요 단일파일도 같이 게시
+      - run: cp standalone.html dist/standalone.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

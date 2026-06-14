@@ -1,0 +1,44 @@
+{
+  "$comment": "BimOn Forma MCP — 단일 출처(single source of truth). 브리지(Program.cs Forma())와 확장(dispatch.ts/standalone.html handlers)이 이 목록과 일치해야 함. SDK 기준: forma-embedded-view-sdk v0.93.",
+  "transport": { "ws": "ws://127.0.0.1:51737", "portRange": [51737, 51746], "handshake": { "client": {"type": "bimon-hello"}, "server": {"type": "bimon-ack", "target": "forma"} } },
+  "argEncoding": "복합 인자(행렬/배열/객체)는 JSON 문자열로 전달",
+  "tools": [
+    { "name": "get_project_info", "group": "read", "write": false, "params": [], "sdk": "project.get/getGeoLocation/getTimezone/getCountryCode", "desc": "프로젝트 이름·지리좌표(lat/lon)·시간대·국가코드" },
+    { "name": "get_proposal_tree", "group": "read", "write": false, "params": [], "sdk": "proposal.getRootUrn+getAll", "desc": "현재 proposal root URN + 요소 트리" },
+    { "name": "get_element", "group": "read", "write": false, "params": [ {"name":"urn","type":"string","required":false}, {"name":"path","type":"string","required":false}, {"name":"recursive","type":"string","required":false} ], "sdk": "elements.get/getByPath", "desc": "URN 또는 path로 요소 데이터" },
+    { "name": "get_element_transform", "group": "read", "write": false, "params": [ {"name":"path","type":"string","required":true} ], "sdk": "elements.getWorldTransform", "desc": "요소의 4x4 월드 변환행렬" },
+    { "name": "get_geometry", "group": "read", "write": false, "params": [ {"name":"kind","type":"string","required":true}, {"name":"path","type":"string","required":false}, {"name":"category","type":"string","required":false} ], "sdk": "geometry.getTriangles/getFootprint/getPathsByCategory", "desc": "kind=triangles|footprint|category" },
+    { "name": "get_building_functions", "group": "read", "write": false, "params": [], "sdk": "settings.get", "desc": "빌딩 기능 설정" },
+    { "name": "get_selection", "group": "read", "write": false, "params": [], "sdk": "selection.getSelection", "desc": "현재 선택 요소 path 목록" },
+    { "name": "check_can_edit", "group": "read", "write": false, "params": [], "sdk": "getCanEdit", "desc": "편집 권한 여부 (WRITE 도구 선행)" },
+
+    { "name": "get_sun", "group": "control", "write": false, "params": [], "sdk": "sun.getDate", "desc": "현재 일조 날짜/시각" },
+    { "name": "set_sun", "group": "control", "write": false, "params": [ {"name":"date","type":"string","required":true} ], "sdk": "sun.setDate", "desc": "일조 시각 설정(ISO 8601)" },
+    { "name": "get_camera", "group": "control", "write": false, "params": [], "sdk": "camera.getCurrent", "desc": "현재 카메라 상태" },
+    { "name": "move_camera", "group": "control", "write": false, "params": [ {"name":"cameraStateJson","type":"string","required":true} ], "sdk": "camera.move", "desc": "카메라 이동(CameraState JSON)" },
+    { "name": "switch_perspective", "group": "control", "write": false, "params": [], "sdk": "camera.switchPerspective", "desc": "원근/직교 전환" },
+    { "name": "capture_view", "group": "control", "write": false, "params": [ {"name":"width","type":"integer","required":false}, {"name":"height","type":"integer","required":false} ], "sdk": "camera.capture", "desc": "현재 뷰 스크린샷(PNG dataURL)" },
+    { "name": "set_visibility", "group": "control", "write": false, "params": [ {"name":"pathsJson","type":"string","required":false}, {"name":"visible","type":"string","required":false}, {"name":"all","type":"string","required":false} ], "sdk": "render.setElementsVisibility/unhideAllElements", "desc": "요소 표시/숨김" },
+
+    { "name": "list_analyses", "group": "analysis", "write": false, "params": [], "sdk": "analysis.list", "desc": "분석 목록" },
+    { "name": "run_sun_analysis", "group": "analysis", "write": false, "params": [ {"name":"parametersJson","type":"string","required":false} ], "sdk": "analysis.triggerSun+getSunAnalysis", "desc": "일조 분석 실행+결과", "verify": true },
+    { "name": "run_noise_analysis", "group": "analysis", "write": false, "params": [ {"name":"parametersJson","type":"string","required":false} ], "sdk": "analysis.triggerNoise+getNoiseAnalysis", "desc": "소음 분석 실행+결과", "verify": true },
+    { "name": "get_area_metrics", "group": "analysis", "write": false, "params": [ {"name":"pathsJson","type":"string","required":false} ], "sdk": "areaMetrics.calculate", "desc": "면적 지표(GFA/GIA/NIA)" },
+
+    { "name": "add_overlay_geojson", "group": "overlay", "write": false, "params": [ {"name":"geojson","type":"string","required":true}, {"name":"transformJson","type":"string","required":false} ], "sdk": "render.geojson.add", "desc": "GeoJSON 오버레이 추가 → overlay id" },
+    { "name": "add_overlay_glb", "group": "overlay", "write": false, "params": [ {"name":"glbBase64","type":"string","required":true}, {"name":"transformJson","type":"string","required":false} ], "sdk": "render.glb.add", "desc": "GLB 오버레이 추가 → overlay id" },
+    { "name": "remove_overlay", "group": "overlay", "write": false, "params": [ {"name":"id","type":"string","required":true} ], "sdk": "render.remove/glb.remove", "desc": "오버레이 제거" },
+    { "name": "clear_overlays", "group": "overlay", "write": false, "params": [], "sdk": "render.cleanup", "desc": "모든 오버레이 제거" },
+
+    { "name": "add_element", "group": "edit", "write": true, "params": [ {"name":"urn","type":"string","required":true}, {"name":"transformJson","type":"string","required":false}, {"name":"parentPath","type":"string","required":false}, {"name":"name","type":"string","required":false} ], "sdk": "proposal.addElement", "desc": "WRITE. URN 요소를 변환행렬과 함께 배치" },
+    { "name": "replace_element", "group": "edit", "write": true, "params": [ {"name":"path","type":"string","required":true}, {"name":"urn","type":"string","required":true} ], "sdk": "proposal.replaceElement", "desc": "WRITE. 요소를 새 URN으로 교체" },
+    { "name": "remove_element", "group": "edit", "write": true, "params": [ {"name":"path","type":"string","required":true} ], "sdk": "proposal.removeElement", "desc": "WRITE. 요소 삭제" },
+    { "name": "edit_element_properties", "group": "edit", "write": true, "params": [ {"name":"urn","type":"string","required":true}, {"name":"propertiesJson","type":"string","required":true} ], "sdk": "elements.editProperties", "desc": "WRITE. 커스텀 속성(JSON Merge Patch)" },
+
+    { "name": "get_drawn_input", "group": "input", "write": false, "params": [ {"name":"kind","type":"string","required":true} ], "sdk": "designTool.getPoint/getPolygon/getExtrudedPolygon/getLine", "desc": "사용자가 그린 형상 수집" },
+
+    { "name": "add_element_mesh", "group": "interop", "write": true, "params": [ {"name":"meshJson","type":"string","required":true}, {"name":"transformJson","type":"string","required":false}, {"name":"name","type":"string","required":false} ], "sdk": "integrateElements.createElementHierarchy+proposal.addElement", "desc": "WRITE. inline 삼각형 메시(verts/faces, meter, Z-up)를 proposal 요소로 배치 (Revit→Forma)" },
+    { "name": "add_element_from_file", "group": "interop", "write": true, "params": [ {"name":"filePath","type":"string","required":true}, {"name":"format","type":"string","required":true}, {"name":"transformJson","type":"string","required":false}, {"name":"name","type":"string","required":false} ], "sdk": "integrateElements.uploadFile|createElementHierarchy+addElement", "desc": "WRITE. 브리지가 로컬 파일(GLB/mesh)을 읽어 배치 (대용량, Claude 우회)" },
+    { "name": "export_scene_mesh", "group": "interop", "write": false, "params": [ {"name":"path","type":"string","required":false}, {"name":"excludedPathsJson","type":"string","required":false}, {"name":"toFile","type":"string","required":false} ], "sdk": "geometry.getTriangles", "desc": "씬 삼각형(flat XYZ, meter, Z-up) 반환, toFile 시 브리지가 파일로 덤프 (Forma→Revit)" }
+  ]
+}
