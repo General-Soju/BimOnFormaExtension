@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+      # (cache:npm 제거 — lockfile이 없어 캐시 설정이 실패하므로)
       - run: npm install
       # Vite 앱 빌드(선택). 실패해도 standalone.html은 아래에서 항상 게시.
       - run: npm run build
