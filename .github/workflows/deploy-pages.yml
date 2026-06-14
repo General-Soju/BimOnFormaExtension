@@ -29,10 +29,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
+      # Vite 앱 빌드(선택). 실패해도 standalone.html은 아래에서 항상 게시.
       - run: npm run build
-      # 빌드불필요 단일파일도 같이 게시
-      - run: cp standalone.html dist/standalone.html
+        continue-on-error: true
+      # 빌드불필요 단일파일을 항상 보장(빌드 성공 시 index.html과 공존, 실패 시 단독)
+      - run: mkdir -p dist && cp standalone.html dist/standalone.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
