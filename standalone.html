@@ -11,6 +11,8 @@
       .status { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
       .dot { width: 10px; height: 10px; border-radius: 50%; background: #777; }
       .dot.on { background: #3ad07a; } .dot.off { background: #e05a5a; }
+      #connectBtn { margin-left: auto; display: none; background: #2a2d34; color: #e6e6e6; border: 1px solid #4b4f57; border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
+      #connectBtn:hover { background: #363a43; border-color: #6a6f7a; }
       #log { height: 240px; overflow: auto; background: #141517; border: 1px solid #303236; border-radius: 6px; padding: 8px; font-family: "Fira Code", Consolas, monospace; font-size: 11px; white-space: pre-wrap; line-height: 1.5; }
       .muted { color: #8a8d92; }
       .author { margin-top: 12px; padding-top: 10px; border-top: 1px solid #303236; font-size: 11px; line-height: 1.7; }
@@ -21,7 +23,7 @@
   </head>
   <body>
     <h1>BimOn AI — Autodesk Forma (Site Design) MCP</h1>
-    <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting…</span></div>
+    <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting…</span><button id="connectBtn">이 패널 연결</button></div>
     <div id="log"></div>
     <p class="muted">이 패널이 열려 있어야 Claude가 Autodesk Forma — Site Design을 제어합니다. (다른 Autodesk 제품 아님)</p>
     <div class="author">
@@ -103,14 +105,28 @@
         export_scene_mesh: async (a) => { const req={}; if (a.path) req.path=a.path; if (a.excludedPathsJson) req.excludedPaths=JSON.parse(a.excludedPathsJson); const tris=await Forma.geometry.getTriangles(Object.keys(req).length?req:undefined); const verts=Array.from(tris); const faces=Array.from({length:verts.length/3},(_,i)=>i); return { verts, faces, unit:"meter", upAxis:"Z" }; },
       };
 
-      // ── WS 메인 루프 (포트 스캔 + hello + 디스패치 + 재연결) ──
+      // ── WS 메인 루프 (포트 스캔 + hello + 디스패치) ──
+      //   last-wins: 같은 브리지에 새 패널이 붙으면 기존 패널은 'bimon-superseded'를 받고 끊긴다.
+      //   끊긴 뒤에는 자동 재연결하지 않고(핑퐁 방지) [이 패널 연결] 버튼으로 수동 전환한다.
       const BASE_PORT = 51737, PORT_RANGE = 10;
       let ws = null;
+      let connecting = false;
+      let superseded = false;
+      const connectBtn = document.getElementById("connectBtn");
+      const showBtn = (label) => { connectBtn.textContent = label || "이 패널 연결"; connectBtn.style.display = "inline-block"; };
+      const hideBtn = () => { connectBtn.style.display = "none"; };
 
       function connect() {
+        if (connecting) return;
+        connecting = true; superseded = false; hideBtn();
         let port = BASE_PORT;
         const tryPort = () => {
-          if (port >= BASE_PORT + PORT_RANGE) { setStatus(false, "Bridge not found — is Claude (BimOn-Forma) running?"); setTimeout(()=>{ port=BASE_PORT; tryPort(); }, 3000); return; }
+          if (port >= BASE_PORT + PORT_RANGE) {
+            connecting = false;
+            setStatus(false, "Bridge not found — Claude(BimOn-Forma) 실행 확인 후 [이 패널 연결]");
+            showBtn("이 패널 연결");
+            return;
+          }
           const sock = new WebSocket(`ws://127.0.0.1:${port}/`);
           let acked = false;
           const failNext = () => { try{sock.close();}catch{} port++; tryPort(); };
@@ -118,14 +134,28 @@
           sock.onopen = () => sock.send(JSON.stringify({ type:"bimon-hello" }));
           sock.onmessage = (ev) => {
             let m; try { m = JSON.parse(ev.data); } catch { return; }
-            if (m.type === "bimon-ack") { acked=true; clearTimeout(timer); ws=sock; setStatus(true, `Connected — ws://127.0.0.1:${port}`); log(`connected to bridge on port ${port}`); return; }
+            if (m.type === "bimon-ack") { acked=true; connecting=false; clearTimeout(timer); ws=sock; setStatus(true, `Connected — ws://127.0.0.1:${port}`); log(`connected to bridge on port ${port}`); hideBtn(); return; }
+            if (m.type === "bimon-superseded") { superseded=true; log("다른 Forma 패널이 연결을 가져갔습니다"); return; }
             handleCall(sock, m);
           };
-          sock.onclose = () => { if (!acked){ clearTimeout(timer); failNext(); return; } ws=null; setStatus(false,"Disconnected — retrying…"); log("disconnected; retrying"); setTimeout(connect,1500); };
+          sock.onclose = () => {
+            if (!acked){ clearTimeout(timer); failNext(); return; }
+            ws=null; connecting=false;
+            if (superseded) { setStatus(false, "다른 Forma 패널이 연결 중 — [이 패널 연결]로 전환"); showBtn("이 패널로 전환"); }
+            else { setStatus(false, "Disconnected — [이 패널 연결] 클릭"); log("disconnected"); showBtn("이 패널 연결"); }
+          };
           sock.onerror = () => {};
         };
         tryPort();
       }
+
+      // 수동 연결/전환 버튼: 다른 패널이 쥐고 있어도 이 패널로 가져온다(브리지 last-wins).
+      connectBtn.onclick = () => {
+        if (ws) return;
+        log("이 패널로 연결을 전환합니다…");
+        setStatus(false, "Connecting…");
+        connect();
+      };
 
       async function handleCall(sock, m) {
         const { id, name } = m; const args = m.arguments ?? {};
