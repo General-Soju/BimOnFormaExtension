@@ -92,6 +92,7 @@
   <h2>사용 중 유지 조건</h2>
   <ul style="margin:0 0 16px 22px">
     <li>이 <b>패널이 열려 있어야</b> Claude가 Forma를 제어합니다 (백그라운드 불가).</li>
+    <li><b>Forma는 한 번에 "한 Claude 대화"에서만</b> 동작합니다. 패널은 먼저 실행된 브리지(포트 51737) 하나에만 연결되므로, 여러 Claude 창/세션을 동시에 켜면 그중 한 곳에서만 Forma가 연결됩니다.</li>
     <li>브리지는 소켓이 1개라 <b>패널은 한 곳에서만</b> 열어주세요.</li>
     <li>쓰기(WRITE) 작업은 Forma <b>편집 권한</b>이 있어야 동작합니다.</li>
   </ul>
@@ -101,7 +102,8 @@
     <tr><th>증상</th><th>조치</th></tr>
     <tr><td>패널이 비어 있음 / <code>Missing ... origin</code></td><td>URL을 직접 연 것. 반드시 <b>Forma 확장으로 등록</b>해서 열어야 함</td></tr>
     <tr><td>URL 입력란이 안 보임</td><td>Owner가 "Myself only". <b>APS 앱으로 변경</b>(4단계)</td></tr>
-    <tr><td>Claude에서 <code>not connected</code></td><td>패널 미연결. 패널을 열고 🟢 Connected 확인</td></tr>
+    <tr><td>Claude에서 <code>not connected</code> (다른 대화에선 됨)</td><td><b>여러 Claude 창/세션을 켠 경우</b>, 패널은 먼저 뜬 브리지(51737)에만 연결됨. <b>Forma는 한 대화에서만</b> 사용. 원하는 대화로 옮기려면: 다른 Claude를 모두 종료 → 원하는 Claude만 켜기 → 패널 새로고침(확장 런처 다시 클릭)</td></tr>
+    <tr><td>Claude에서 <code>not connected</code> (전부 안 됨)</td><td>패널 미연결. 패널을 열고 🟢 Connected 확인</td></tr>
     <tr><td>두 곳에서 열어 도구가 엉킴</td><td>패널은 <b>한 곳만</b> 열기 (소켓 1개)</td></tr>
   </table>
 
